@@ -1,0 +1,289 @@
+---
+title: "ST-511:P2"
+author: "2425"
+date: "`r Sys.Date()`"
+output: word_document
+---
+
+
+## Practical Sheet (B2)
+
+**Topic: Analysis of two-way classification model with equal observations per cell**
+
+1. The quality control department of a fabric finishing plant is studying the effect of several factors on the dying of cotton synthetic cloth used to manufacture men’s shirt. Three operators and three cycle times were selected and three small specimens of cloth were dyed under each setting condition. The finished cloth is compared to a standard and a numerical score is assigned. The results are as follows.
+
+| Cycle time | Operator 1 | Operator 2 | Operator 3 |
+| --- | --- | --- | --- |
+| 40 | 23, 24, 25 | 27, 28, 26 | 31, 32, 29 |
+| 50 | 36, 35, 36 | 34, 38, 39 | 33, 34, 35 |
+| 60 | 28, 24, 27 | 35, 35, 34 | 26, 27, 25 |
+
+a. Using appropriate model test whether the cycle time affects the dyeing quality of cotton synthetic cloth significantly.
+b. Obtain the Blues of contrast effects of cycle time and operators.
+c. Does the performance of three operators differ significantly? Which operator gives the best quality?
+d. Obtain the effect plots for both the factors along-with interaction plot and interpret them.
+e. Does the effect of three cycle time on response differ significantly?
+f. Test the hypothesis performance of first operator = average performance of the other two operator.
+```{r}
+library(readxl)
+df <- read_excel("Pract2Data_DOE.xlsx")
+df$CycleTime=as.factor(df$CycleTime)
+df$Operator=as.factor(df$Operator)
+df
+y=as.vector(df$Quality)
+
+p=3
+q=3
+r=3
+df_A=2
+df_B=2
+df_Error=(p*q*r)-(p+q-1)
+df_total=(p*q*r)-1
+
+X_a=model.matrix(~CycleTime-1,data=df)
+X_b=model.matrix(~Operator-1,data=df)
+
+Yi_dot=t(X_a)%*%y
+Ydot_j=t(X_b)%*%y
+Ydotdot=sum(y)
+
+CF=(t(Ydotdot)%*%Ydotdot)/(p*q*r)
+
+sq_A=(t(Yi_dot)%*%Yi_dot)/(q*r)
+SSA=sq_A-CF
+
+sq_B=(t(Ydot_j)%*%Ydot_j)/(p*r)
+SSB=sq_B-CF
+
+SST=(t(y)%*%y)-CF
+SSE=SST-SSA-SSB
+
+MSA=SSA/df_A
+MSB=SSB/df_B
+MSE=SSE/df_Error
+F_1=MSA/MSE
+F_2=MSB/MSE
+
+p_val_A=1-pf(F_1,df_A,df_Error)
+p_val_B=1-pf(F_2,df_B,df_Error)
+
+ANOVA_table=data.frame(
+  source=c("Factor_A","Factor_B","Error","Total"),
+  d_f=c(df_A,df_B,df_Error,df_total),
+  SS=c(SSA,SSB,SSE,SST),
+  MS=c(MSA,MSB,MSE,"-"),
+  F_cal=c(F_1,F_2,"-","-"),
+  p_val=c(p_val_A,p_val_B,"-","-")
+)
+ANOVA_table
+```
+
+
+```{r}
+## Cycle time affects the dyeing quality of cotton synthetic cloth significataly.
+#b.	Obtain the Blues of contrast effects of cycle time and operators.
+Y_1_dot=t(X_a[,1])%*%y
+Y_2_dot=t(X_a[,2])%*%y
+Y_3_dot=t(X_a[,3])%*%y
+
+Y_1_dot_bar=Y_1_dot/(q*r)
+Y_2_dot_bar=Y_2_dot/(q*r)
+Y_3_dot_bar=Y_3_dot/(q*r)
+
+a1_a2_hat=Y_1_dot_bar-Y_2_dot_bar
+a1_a3_hat=Y_1_dot_bar-Y_3_dot_bar
+
+F_11=((a1_a2_hat)^2*(q*r))/(2*MSE)
+F_22=((a1_a3_hat)^2*(q*r))/(2*MSE)
+
+p_val_11=1-pf(F_11,1,df_Error)
+p_val_22=1-pf(F_22,1,df_Error)
+
+ANOVA_table=data.frame(
+  source=c("a1-a2","a1-a3","Error"),
+  d_f=c(1,1,df_Error),
+  F_cal=c(F_11,F_22,"-"),
+  p_val=c(p_val_11,p_val_22,"-")
+)
+ANOVA_table
+```
+
+
+```{r}
+#c)Does the performance of three operators differ significantly? Which operator gives the best quality?
+operator_means <- aggregate(Quality ~ Operator, data = df, mean)
+best_operator <- operator_means[which.max(operator_means$Quality), ]
+print(best_operator)
+
+library(ggplot2)
+
+ggplot(df, aes(x = Operator, y = Quality)) +
+  stat_summary(fun = mean, geom = "point", size = 4, color = "blue") +
+  stat_summary(fun.data = mean_se, geom = "errorbar", width = 0.2) +
+  labs(title = "Mean Quality by Operator", y = "Mean Quality") +
+ theme_minimal()
+```
+
+
+```{r}
+#d)Obtain the effect plots for both the factors along-with interaction plot and interpret them.
+# Main effects plot
+with(df, interaction.plot(Operator, CycleTime, Quality,
+                          type = "b", col = c("red", "blue", "darkgreen"),
+                          lty = 1, lwd = 2,
+                          xlab = "Operator",
+                          ylab = "Mean Quality",
+                          trace.label = "Cycle Time",
+                          main = "Interaction Plot: Operator×CycleTime"))
+
+
+# to find interaction term
+p=3
+q=3
+r=3
+df_A=2
+df_B=2
+df_AB=(p-1)*(q-1)
+df_Error=p*q*(r-1)
+df_total=(p*q*r)-1
+
+X_a=model.matrix(~CycleTime-1,data=df)
+X_b=model.matrix(~Operator-1,data=df)
+
+Yi_dot=t(X_a)%*%y
+Ydot_j=t(X_b)%*%y
+Ydotdot=sum(y)
+x_ab=model.matrix(~CycleTime:Operator-1,data=df)
+Yij.=t(x_ab)%*%y
+
+  
+CF=(t(Ydotdot)%*%Ydotdot)/(p*q*r)
+
+sq_A=(t(Yi_dot)%*%Yi_dot)/(q*r)
+SSA=sq_A-CF
+
+sq_B=(t(Ydot_j)%*%Ydot_j)/(p*r)
+SSB=sq_B-CF
+
+SST=(t(y)%*%y)-CF
+SScell=((t(Yij.)%*%Yij.)/r)-CF
+SSAB=SScell-SSA-SSB
+SSE=SST-SSA-SSB-SSAB
+
+MSA=SSA/df_A
+MSB=SSB/df_B
+MSAB=SSAB/df_AB
+MSE=SSE/df_Error
+F_1=MSA/MSE
+F_2=MSB/MSE
+F_12=MSAB/MSE
+p_val_A=1-pf(F_1,df_A,df_Error)
+p_val_B=1-pf(F_2,df_B,df_Error)
+p_val_AB=1-pf(F_12,df_AB,df_Error)
+
+
+ANOVA_table=data.frame(
+  source=c("Factor_A","Factor_B","Factor_AB","Error","Total"),
+  d_f=c(df_A,df_B,df_AB,df_Error,df_total),
+  SS=c(SSA,SSB,SSAB,SSE,SST),
+  MS=c(MSA,MSB,MSAB,MSE,"-"),
+  F_cal=c(F_1,F_2,F_12,"-","-"),
+  p_val=c(p_val_A,p_val_B,p_val_AB,"-","-")
+)
+ANOVA_table
+
+```
+
+
+```{r}
+#e)Does the effect of three cycle time on response differ significantly?
+model=aov(Quality~CycleTime-1,data=df)
+summary(model)
+#f)Test the hypothesis performance of first operator = average performance of the other two operator.
+library(emmeans)
+model=lm(Quality~CycleTime+Operator,data=df)
+emm <- emmeans(model, ~ Operator)
+contrast(emm, method = list("Op1 = avg(Op2,Op3)" = c(1,-0.5,-0.5)))
+
+```
+
+
+2. The effective life of tool installed a numerically controlled machine is thought to be affected the cutting speed and tool angle. Three speeds and three angles are selected and two replicates of each experiment are run. The data from this experiment is as follows.
+
+| Tool angle (in degrees) | Cutting speed 125 (inches/min) | Cutting speed 150 (inches/min) | Cutting speed 175 (inches/min) |
+| --- | --- | --- | --- |
+| 15 | -1, -1 | -3, 0 | 2, 3 |
+| 20 | 0, 2 | 1, 3 | 4, 6 |
+| 25 | -1, 0 | 5, 6 | 0, -1 |
+
+Using appropriate model analyze the data.
+
+
+```{r}
+# Create data vectors
+ToolAngle <- rep(c(15, 20, 25), each = 6)  # 3 levels × 6 observations per level
+CuttingSpeed <- rep(c(125, 150, 175), times = 3, each = 2)
+
+Life <- c(
+  -1.0, -1.0,-3,0,2,3,0,2,1,3,4,6,-1,0,5,6, 0,-1    
+)
+
+# Combine into a data frame
+df <- data.frame(
+  ToolAngle = as.factor(ToolAngle),
+  CuttingSpeed = as.factor(CuttingSpeed),
+  Life = Life
+)
+df
+df$ToolAngle=as.factor(df$ToolAngle)
+df$CuttingSpeed=as.factor(df$CuttingSpeed)
+df
+y=as.vector(df$Life)
+
+p=3
+q=3
+r=2
+df_A=2
+df_B=2
+df_Error=(p*q*r)-(p+q-1)
+df_total=(p*q*r)-1
+
+X_a=model.matrix(~ToolAngle-1,data=df)
+X_b=model.matrix(~CuttingSpeed-1,data=df)
+
+Yi_dot=t(X_a)%*%y
+Ydot_j=t(X_b)%*%y
+Ydotdot=sum(y)
+
+CF=(t(Ydotdot)%*%Ydotdot)/(p*q*r)
+
+sq_A=(t(Yi_dot)%*%Yi_dot)/(q*r)
+SSA=sq_A-CF
+
+sq_B=(t(Ydot_j)%*%Ydot_j)/(p*r)
+SSB=sq_B-CF
+
+SST=(t(y)%*%y)-CF
+SSE=SST-SSA-SSB
+
+MSA=SSA/df_A
+MSB=SSB/df_B
+MSE=SSE/df_Error
+F_1=MSA/MSE
+F_2=MSB/MSE
+
+p_val_A=1-pf(F_1,df_A,df_Error)
+p_val_B=1-pf(F_2,df_B,df_Error)
+
+ANOVA_table=data.frame(
+  source=c("Factor_A","Factor_B","Error","Total"),
+  d_f=c(df_A,df_B,df_Error,df_total),
+  SS=c(SSA,SSB,SSE,SST),
+  MS=c(MSA,MSB,MSE,"-"),
+  F_cal=c(F_1,F_2,"-","-"),
+  p_val=c(p_val_A,p_val_B,"-","-")
+)
+ANOVA_table
+
+
+```

@@ -1,0 +1,131 @@
+---
+title: "ST-511:P7"
+author: "Rajshri Patil (2425)"
+date: "2025-09-24"
+output: word_document
+---
+
+#Q1:
+```{r}
+df1 <- data.frame(
+  Treatment=c("mu","a","b","ab","c","ac","bc","abc",
+              "d","ad","bd","abd","cd","acd","bcd","abcd"),
+  viscosity=c(1400,1500,1520,1630,1380,1525,1500,1620,
+              1400,1525,1500,1500,1420,1490,1500,1600)
+)
+
+# Factor codings: +1 if factor present, -1 if absent
+A <- ifelse(grepl("a", df1$Treatment), 1, -1)
+B <- ifelse(grepl("b", df1$Treatment), 1, -1)
+C <- ifelse(grepl("c", df1$Treatment), 1, -1)
+D <- ifelse(grepl("d", df1$Treatment), 1, -1)
+
+#a) Effects calculation
+contrasts <- cbind(A, B, A*B, C, A*C, B*C, A*B*C, D,
+                   A*D, B*D, A*B*D, C*D, A*C*D, B*C*D, A*B*C*D)
+
+
+df2 <- data.frame(Effects=df1$Treatment[2:16])  # exclude grand mean "mu"
+df2$Est <- as.vector(t(df1$viscosity[1:16]) %*% contrasts / (length(df1$viscosity)/2))
+
+print(df2)
+
+#b)Main effects plot
+
+library(ggplot2)
+
+#Add factors into df1
+df1$A <- factor(ifelse(grepl("a", df1$Treatment), "Low", "High"))
+df1$B <- factor(ifelse(grepl("b", df1$Treatment), "Low", "High"))
+df1$C <- factor(ifelse(grepl("c", df1$Treatment), "Low", "High"))
+df1$D <- factor(ifelse(grepl("d", df1$Treatment), "Low", "High"))
+
+# Function to compute means at low/high levels
+
+means <- data.frame(
+  Factor = rep(c("A","B","C","D"), each=2),
+  Level  = rep(c("Low","High"), times=4),
+  Mean   = c(
+    tapply(df1$viscosity, df1$A, mean),
+    tapply(df1$viscosity, df1$B, mean),
+    tapply(df1$viscosity, df1$C, mean),
+    tapply(df1$viscosity, df1$D, mean)
+  )
+)
+
+print(means)
+
+# Plot main effects
+
+library(ggplot2)
+ggplot(means, aes(x=Level, y=Mean, group=Factor)) +
+  geom_line(aes(color=Factor)) +
+  geom_point(size=3, aes(color=Factor)) +
+  facet_wrap(~Factor, scales="free") +
+  labs(title="Main Effects Plot for Viscosity",
+       y="Mean Viscosity", x="Factor Level") +
+  theme_minimal(base_size=14)
+
+# Interaction plots
+# A × B
+
+interaction.plot(df1$A, df1$B, df1$viscosity,
+                 main="Interaction Plot: A × B",
+                 xlab="Factor A", ylab="Mean Viscosity", trace.label="Factor B",
+                 col = c("red","blue"))
+
+# A × C
+interaction.plot(df1$A, df1$C, df1$viscosity,
+                 main="Interaction Plot: A × C",
+                 xlab="Factor A", ylab="Mean Viscosity", trace.label="Factor C",
+                 col = c("red","blue"))
+
+# B × C
+interaction.plot(df1$B, df1$C, df1$viscosity,
+                 main="Interaction Plot: B × C",
+                 xlab="Factor B", ylab="Mean Viscosity", trace.label="Factor C",
+                 col = c("red","blue"))
+
+# A × D
+interaction.plot(df1$A, df1$D, df1$viscosity,
+                 main="Interaction Plot: A × D",
+                 xlab="Factor A", ylab="Mean Viscosity", trace.label="Factor D",
+                 col = c("red","blue"))
+
+
+```
+
+
+#Q2:
+```{r}
+
+```
+
+
+
+#Q1:Using Anova
+```{r}
+#a)# Fit factorial model excluding ABCD
+
+df1 <- data.frame(
+  Treatment=c("mu","a","b","ab","c","ac","bc","abc",
+              "d","ad","bd","abd","cd","acd","bcd","abcd"),
+  viscosity=c(1400,1500,1520,1630,1380,1525,1500,1620,
+              1400,1525,1500,1500,1420,1490,1500,1600)
+)
+
+# Factor codings: +1 if factor present, -1 if absent
+A <- ifelse(grepl("a", df1$Treatment), 1, -1)
+B <- ifelse(grepl("b", df1$Treatment), 1, -1)
+C <- ifelse(grepl("c", df1$Treatment), 1, -1)
+D <- ifelse(grepl("d", df1$Treatment), 1, -1)
+
+fit <- lm(df1$viscosity ~ A*B*C*D - A:B:C:D)  # removes 4-way interaction
+summary(fit)
+
+# Effects estimates
+effects <- coef(fit)[-1] / 2
+effects
+anova(fit)
+```
+

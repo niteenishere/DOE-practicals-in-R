@@ -1,0 +1,73 @@
+---
+title: "ST-511:P4"
+author: '2425'
+date: "`r Sys.Date()`"
+output: html_document
+---
+
+#Topic:Analysis of Balanced Incomplete Block Design(BIBD)
+##Q1:
+```{r}
+library(readxl)
+df=read_excel("Pract4_Data_Q1.xlsx")
+#View(df)
+df$A=as.factor(df$A)
+df$B=as.factor(df$B)
+
+Delta <- model.matrix(~df$A-1, data = df);
+D <- model.matrix(~df$B-1, data = df)
+
+n=length(unique(df$Y))
+v=length(unique(df$A))
+b=length(unique(df$B))
+
+Y=as.vector(df$Y)
+
+# --- Intermediate matrices ---
+T_=t(Delta)%*%(df$Y)
+B=t(D)%*%(df$Y)
+N=t(Delta)%*%D
+G=sum(df$Y)
+R=t(Delta)%*%Delta
+K=t(D)%*%D
+Q=T_- N%*%solve(K)%*%(B)
+C=R-N%*%solve(K)%*%t(N)
+
+# --- SS calculations ---
+library(MASS)
+to_hat=ginv(C)%*%Q
+CF=G^2/n
+SST_adj=t(to_hat)%*%Q
+SSB_unadj=t(B)%*%solve(K)%*%B-CF
+TSS=(t(df$Y)%*%(df$Y))-CF
+SSE=TSS-SST_adj-SSB_unadj
+
+# --- df ---
+df_T <- v-1
+df_B <- b-1
+df_E <- n-(v+b-1)
+df_Tot <- n-1
+
+# --- MS ---
+MST_adj=TSS-SST_adj/(v-1)
+MSB=SSB_unadj/df_B
+MSE=SSE/(n-v-b+1)
+
+# --- F and p ---
+F_T=MST_adj/MSE
+P_T=1-pf(F_T,df_T,df_E,lower.tail = FALSE)
+      
+# --- ANOVA table ---
+anova_table <- data.frame(
+  Source = c("Treatment (A)", "Block (B)", "Error", "Total"),
+  DF     = c(df_T, df_B, df_E, df_Tot),
+  SS     = c(SST_adj, SSB_unadj, SSE, TSS),
+  MS     = c(MST_adj, MSB, MSE, '-'),
+  Fval      = c(F_T, '-','-','-'),
+  P      = c(P_T,'-','-','-')
+)
+
+print(anova_table, row.names = FALSE)
+
+```
+

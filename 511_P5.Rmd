@@ -1,0 +1,183 @@
+---
+title: "ST-511:P5"
+author: "2425"
+date: "`r Sys.Date()`"
+output: html_document
+---
+
+#Topic: Ancova for one way and two way
+#Q1:
+```{r}
+df=data.frame(machine=factor(c(1,1,1,1,1,2,2,2,2,2,3,3,3,3,3)),
+y=c(36,41,39,42,49,40,48,39,45,44,35,37,42,34,32),
+x=c(20,25,24,25,32,22,28,22,30,28,21,23,26,21,15))
+df
+k=length(unique(df$machine))
+k
+n=5
+y..=sum(df$y)
+x..=sum(df$x)
+yi.=tapply(df$y,df$machine,sum)
+xi.=tapply(df$x,df$machine,sum)
+
+Tyy=sum((yi.)^2)/(n)-(y..^2)/(n*k)
+Txx=sum((xi.)^2)/(n)-(x..^2)/(n*k)
+Txy=sum(yi.*xi.)/(n)-(x..*y..)/(n*k)
+Tyy
+Txx
+Txy
+
+Gyy=sum(df$y^2)-y..^2/(n*k);Gyy
+Gxx=sum(df$x^2)-x..^2/(n*k);Gxx
+Gxy=sum(df$x*df$y)- (x..*y..)/(n*k);Gxy
+
+Eyy=Gyy-Tyy;Eyy
+Exx=Gxx-Txx;Exx
+Exy=Gxy-Txy;Exy
+Eyx=Exy
+Gyx=Gxy
+
+T_=Eyy-Exy^2/Exx;T_
+T1=Gyy-Gxy^2/Gxx;T1
+
+de_fr_treat=k-1;de_fr_treat
+de_Er_Err=k*(n-1);de_Er_Err
+tot_de_fre=(n*k)-1;tot_de_fre
+
+dfadj_t=k-1
+dfadj_t
+dfadj_error=(k*(n-1))-1
+dfadj_error
+dfadj_reg=1
+dfadj_reg
+
+T__=Eyy-Eyx%*%solve(Exx)%*%Exy;T__
+T1_=Gyy-Gyx%*%solve(Gxx)%*%Gxy;T1_
+tr_ssdaj=T1_-T__;tr_ssdaj
+Erro_ssadj=T__;Erro_ssadj
+reg_ssadj=Eyy-T__;reg_ssadj
+
+MS_tre=(T1_-T__)/(k-1);MS_tre
+MS_err=T__/((k*(n-1))-1)
+MS_adj_R=Eyy-T__
+F1=MS_tre/MS_err
+F1
+F2=MS_adj_R/MS_err
+F2
+p_value1=1-pf(F1,(k-1),k*(n-1)-1)
+p_value2=1-pf(F2,1,k*(n-1)-1)
+
+data.frame(source=c("treat","Error","total","treat(adj)","Error(adj)","reg"),
+           Df=c((k-1),k*(n-1),k*(n*k-1),'','',''),
+           Dfadj=c('','','',(k-1),k*(n-1)-1,1),
+           Ssadj=c('',T__,T1_,T1_-T__,T__,Eyy-T__),
+           MSadj=c('','','',MS_tre,MS_err,MS_adj_R),
+           F_ratio=c('','','',F1,'',F2),
+           p_value=c('','','',p_value1,'',p_value2))
+```
+
+
+#Q2:
+```{r}
+rm(list = ls())
+df2 <- data.frame(
+  Block = factor(rep(c("B","C","D","E"), each = 4)),
+  Diet = factor(rep(c("Control","Dried_grass","Molassed_silage","AIV_Fodder"), times = 4)),
+  x = c(279,223,269,342,   
+        245,224,256,208,   
+        197,179,191,210,   
+        250,232,136,274),  
+  y = c(208,172,183,247,   
+        212,164,204,150,   
+        157,156,191,159,
+        208,166,192,210));
+
+df2
+p = length(unique(df2$Diet));
+p
+q = length(unique(df2$Block));
+q
+n = length(df2$y);
+n
+
+# Sum of squares
+y.. = sum(df2$y);
+x.. = sum(df2$x);
+y.j = tapply(df2$y, df2$Block, sum);
+yi. = tapply(df2$y, df2$Diet, sum);
+xi. = tapply(df2$x, df2$Diet, sum);
+x.j = tapply(df2$x, df2$Block, sum)
+Tyy = sum((yi.)^2)/(q) - (y..^2)/(p*q);
+Txx = sum((xi.)^2)/(q) - (x..^2)/(p*q);
+Txy = sum(xi.*yi.)/(q) - (x..*y..)/(p*q);
+
+Gyy = sum(df2$y^2) - (y..^2)/(p*q)
+Gxx = sum(df2$x^2) - (x..^2)/(p*q)
+Gxy = sum(df2$x*df2$y) - (x..*y..)/(p*q)
+
+Byy = (sum((y.j)^2)/p) - (y..^2)/(p*q)
+Bxx = (sum((x.j)^2)/p) - (x..^2)/(p*q)
+Bxy = (sum(x.j*y.j)/p) - (x..*y..)/(p*q)
+
+# Error components
+Eyy = Gyy - Tyy - Byy
+Exx = Gxx - Txx - Bxx
+Exy = Gxy - Txy - Bxy
+
+# ----------------------------
+# Adjusted SS
+# ----------------------------
+T_  = Eyy - (Exy^2)/Exx                   # Error (adj.)
+T1  = Tyy + Eyy                           # Treat + Error
+T2  = Byy + Eyy                           # Block + Error
+
+# Adjusted Treatment and Block SS
+SS_Treat_adj = T1 - T_
+SS_Block_adj = T2 - T_
+
+# Regression SS
+SS_Reg = Eyy - T_
+
+# ----------------------------
+# Degrees of freedom
+# ----------------------------
+df_Treat = p - 1
+df_Block = q - 1
+df_Error = (p - 1)*(q - 1) - 1
+df_Reg   = 1
+
+# ----------------------------
+# Mean Squares
+# ----------------------------
+MS_Treat_adj = SS_Treat_adj / df_Treat
+MS_Block_adj = SS_Block_adj / df_Block
+MS_Error_adj = T_ / df_Error
+MS_Reg       = SS_Reg / df_Reg
+
+# ----------------------------
+# F Ratios
+# ----------------------------
+F_Treat_adj = MS_Treat_adj / MS_Error_adj
+F_Block_adj = MS_Block_adj / MS_Error_adj
+F_Reg       = MS_Reg / MS_Error_adj
+
+pval_Treat = pf(F_Treat_adj, df_Treat, df_Error, lower.tail = FALSE)
+pval_Block = pf(F_Block_adj, df_Block, df_Error, lower.tail = FALSE)
+pval_Reg   = pf(F_Reg, df_Reg, df_Error, lower.tail = FALSE)
+
+# ----------------------------
+# Construct ANCOVA table
+# ----------------------------
+ANCOVA_Table <- data.frame(
+  Source = c("Treatment (adj.)", "Block (adj.)", "Regression", "Error (adj.)"),
+  df     = c(df_Treat, df_Block, df_Reg, df_Error),
+  SS     = c(SS_Treat_adj, SS_Block_adj, SS_Reg, T_),
+  MS     = c(MS_Treat_adj, MS_Block_adj, MS_Reg, MS_Error_adj),
+  F      = c(F_Treat_adj, F_Block_adj, F_Reg, NA),
+  pValue = c(pval_Treat, pval_Block, pval_Reg, NA)
+)
+
+print(ANCOVA_Table, row.names = FALSE)
+
+
+```

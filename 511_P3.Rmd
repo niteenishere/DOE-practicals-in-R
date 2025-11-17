@@ -1,0 +1,78 @@
+---
+title: "ST-511:P3"
+author: "2425"
+date: "`r Sys.Date()`"
+output: word_document
+---
+
+
+## Practical Sheet (B3)
+
+**Topic: Analysis of two-way classification model with unequal observations per cell**
+
+1. In an investigation carried out by Remington and Schork for studying the effect of smoking on physical activity, 21 individuals were classified into one of the three groups by smoking history and randomly assigned to one of the three stress tests: i. bicycle ergometer ii) treadmill iii) step test. The time until maximum oxygen uptake was recorded in minutes. The data given is as follows.
+
+| Smoking History | B1 Bicycle | B2 Treadmill | B3 Step |
+| --- | --- | --- | --- |
+| A1 None | 12.8, 13.5, 11.2 | 16.2, 17.8 | 22.6, 19.3, 18.9 |
+| A2 Moderate | 10.9 | 15.5, 13.8, 16.2 | 21.0, 15.9 |
+| A3 Heavy | 9.2, 7.5 | 13.2, 8.1 | 16.2, 16.1, 17.8 |
+
+Analyze the data without assuming an interaction term in the model between the two factors smoking history and stress test.
+
+```{r}
+library(readxl)
+df <- read_excel("Pract3_Data_Q1.xlsx");df
+df$Smoking <- as.factor(df$Smoking)
+df$Test <- as.factor(df$Test)
+df
+Y <- as.vector(df$Time)
+n <- length(df$Time)
+v <- length(unique(df$Smoking))
+b <- length(unique(df$Test))
+#b=3
+```
+
+```{r}
+Delta <- model.matrix(~Smoking-1,data = df)
+D <- model.matrix(~Test-1,data = df)
+Y <- as.vector(df$Time)
+T_ <- t(Delta)%*%Y
+G <- sum(T_)
+B <- t(D)%*%Y
+N <- t(Delta)%*%D
+R <- t(Delta)%*%Delta
+K <- t(D)%*%D
+Q <- T_-N%*%solve(K)%*%B
+P <- B-t(N)%*%solve(R)%*%T_
+C <- R-N%*%solve(K)%*%t(N)
+#check if C is symmetric ie C=t(C)
+all(C==t(C))
+#yes C is symmetric
+qr(C)$rank
+Ev1 <- round(matrix(rep(1,v),nrow = 1),digits = 5)
+Ev1_intoq <- round(matrix(rep(1,v),nrow = 1)%*%Q,digits = 5)
+r <- as.vector(diag(R))
+k <- as.vector(diag(K))
+all(N==r%*%t(k)/n)
+
+```
+
+
+2. An experiment was conducted to determine if either firing temperature or furnace position affects the baked density of a carbon anode. The data is as given below.
+
+| Position | Temperature 800 (in degree Celsius) | Temperature 825 (in degree Celsius) | Temperature 850 (in degree Celsius) |
+| --- | --- | --- | --- |
+| 1 | 570, 565 | 1063, 1080, 1043 | 565 |
+| 2 | 528, 547, 521 | 988 | 526, 538 |
+| 3 | 610, 592 | 1026, 1004 | 510, 590, 532 |
+
+Conduct the analysis of variance and test the hypothesis on main effects.
+
+```{r}
+
+
+
+```
+
+

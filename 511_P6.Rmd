@@ -1,0 +1,112 @@
+---
+title: "ST-511:P6"
+author: "Rajshri Patil (2425)"
+date: "2025-09-11"
+output: word_document
+---
+
+
+
+
+
+```{r}
+# Data entry
+df <- data.frame(
+  Treat = c("1","a","b","ab","c","ac","bc","abc"),
+  R1 = c(13.9,12.7,14.6,12.8,16.2,10.2,13.8,12.0),
+  R2 = c(14.7,10.8, 8.9, 9.3, 8.3, 8.8, 9.0,10.3),
+  R3 = c(12.7,12.1,15.2,10.3,13.3,11.3,13.0,11.5),
+  R4 = c(10.5, 9.3,11.7, 9.1,10.4, 8.2,13.5,11.4)
+)
+
+# Factorial effect coding
+dfa <- ifelse(grepl("a",df$Treat),-1,1)  # a
+dfb <- ifelse(grepl("b",df$Treat),-1,1)   # b
+dfc <- ifelse(grepl("c",df$Treat),-1,1)   # c
+
+dfab  <- dfa*dfb
+dfac  <- dfa*dfc
+dfbc  <- dfb*dfc
+dfabc <- dfa*dfb*dfc
+
+df$A=factor(ifelse(grepl("a",df$Treat),'Low','High'))
+df$B=factor(ifelse(grepl("b",df$Treat),'Low','High'))
+df$C=factor(ifelse(grepl("c",df$Treat),'Low','High'))
+df
+
+
+# Total yield across replicates
+df$Total <- rowSums(df[,2:5])
+
+# Convert to vector of all yields
+Y <- c(df$R1, df$R2, df$R3, df$R4)
+
+# Now prepare ANOVA table manually
+k <- 3       # number of factors
+n <- 4       # replicates per treatment
+aov_df <- data.frame(
+  Source = c("A","B","C","AB","AC","BC","ABC","Error","Total"),
+  df = NA, SS = NA, MS = NA, F = NA, pval = NA
+)
+
+# Degrees of freedom
+aov_df$df[1:7] <- rep(1,2^(k)-1)
+aov_df$df[8]   <- (n-1)*(2^k)   # error
+aov_df$df[9]   <- n*(2^k) - 1   # total
+
+# Compute SS for each effect
+effects <- list(dfa, dfb, dfc, dfab, dfac, dfbc, dfabc)
+
+for(i in 1:7){
+  aov_df$SS[i] <- (sum(effects[[i]] * df$Total))^2 / (n*2^k)
+}
+aov_df$SS[9] <- sum(Y^2) - (sum(Y))^2/(n*2^k) # Total SS
+aov_df$SS[8] <- aov_df$SS[9] - sum(aov_df$SS[1:7]) # Error SS
+aov_df$MS <- aov_df$SS / aov_df$df # Mean Squares
+aov_df$F[1:7] <- aov_df$MS[1:7] / aov_df$MS[8] # F-values
+aov_df$pval[1:7] <- 1 - pf(aov_df$F[1:7], aov_df$df[1:7], aov_df$df[8]) # p-values
+print(aov_df)
+
+```
+
+
+
+
+  
+```{r}
+# Keep contrast vectors in a separate list
+contrasts <- list(dfa, dfb, dfc, dfab, dfac, dfbc, dfabc)
+
+# Initialize effects table
+effects <- data.frame(
+  Effect = c("A","B","C","AB","AC","BC","ABC"),
+  Esti = NA, var = NA, t_stat = NA,
+  lower = NA, upper = NA
+)
+
+# Compute effects
+for(i in 1:7){
+  # Estimate of effect
+  effects$Esti[i] <- sum(contrasts[[i]] * df$Total) / (n * 2^(k-1))
+  
+  # Variance of effect estimate (using error MS)
+  effects$var[i] <- aov_df$MS[8] / (n * 2^(k-2))
+  
+  # t-statistic
+  effects$t_stat[i] <- effects$Esti[i] / sqrt(effects$var[i])
+  
+  # Confidence intervals (95%)
+  se <- sqrt(effects$var[i])
+  df_error <- aov_df$df[8]
+  t_crit <- qt(0.975, df_error)
+  effects$lower[i] <- effects$Esti[i] - t_crit * se
+  effects$upper[i] <- effects$Esti[i] + t_crit * se
+}
+
+print(effects)
+
+```
+  
+
+  
+  
