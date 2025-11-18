@@ -1,0 +1,107 @@
++---
+title: "Support vector Machines"
+author: "MORE"
+date: "`r Sys.Date()`"
+output: html_document
+---
+#Example 1
+```{r}
+plot(0,type="n",xlab="x1",ylab="x2",ylim=c(-10,10),xlim=c(-10,10))
+abline(1,3,col="Red")  #1+3*x1-x2=0
+
+#Points where line>0 and line<0
+points(-2,-4,col="blue",pch=19)
+points(-2,-6,col="blue",pch=19)
+points(0,5,col="blue",pch=19)
+points(5,0,col="blue",pch=19)
+```
+
+#Example 2
+```{r}
+plot(-1:5,-1:5,type="n",xlab="x1",ylab="x2")
+points(c(3,2,4,1),c(4,2,4,2),col="Red",pch=19)
+
+points(c(2,4,4),c(1,3,1),col="blue",pch=19)
+abline(-0.5,1,col="green",lwd=2)    #y intercept=-0.5 and slope=1
+abline(-1,1,col="black",lty="dotted")
+abline(0,1,col="black",lty="dotted")
+```
+
+
+#(b) On the same plot, sketch the hyperplane −2+X1 +2X2 = 0. Indicate the set of points for which −2+X1 +2X2 > 0, as well as the set of points for which −2+X1 +2X2 < 0. (ISLR@ book excercise quetion)
+```{r}
+plot(0,type="n",xlab="x1",ylab="x2",ylim=c(-10,10),xlim=c(-10,10))
+
+abline(1,-0.5,col="red")  #1+3*x1-x2=0
+
+#Points where line>0 and line<0
+points(-5,8,col="blue",pch=19)
+points(0,0,col="green",pch=19)
+points(5,8,col="black",pch=19)
+points(10,-5,col="pink",pch=19)
+```
+
+#Example 3
+```{r}
+
+set.seed(1)
+x=matrix(rnorm (20*2), ncol=2)
+y=c(rep(-1,10), rep(1,10))
+x[y==1,]=x[y==1,] + 1
+plot(x, col=(3-y))
+
+```
+
+```{r}
+####
+set.seed(1)
+#Fit The Support Vector Classifier
+dat=data.frame(x=x, y=as.factor(y))
+dat
+#install.packages('e1071')
+library ('e1071')
+svmfit=svm(y~., data=dat , kernel ="linear", cost=10, scale=FALSE)
+svmfit
+plot(svmfit , dat)
+svmfit$index
+summary (svmfit) 
+svmfit=svm(y~., data=dat , kernel ="linear", cost=0.1, scale=FALSE)
+plot(svmfit , dat) 
+svmfit$index 
+
+####
+set.seed(1)
+tune.out=tune(svm ,y~.,data=dat,kernel="linear", 
+              ranges=list(cost=c(0.001, 0.01, 0.1, 1,5,10,100) ))
+summary (tune.out)
+bestmod =tune.out$best.model
+summary (bestmod )
+
+####
+xtest=matrix(rnorm (20*2) , ncol=2)
+ytest=sample(c(-1,1), 20, rep=TRUE)
+xtest[ytest==1,]= xtest[ytest==1,] + 1
+testdat =data.frame(x=xtest , y=as.factor(ytest))
+ypred=predict (bestmod ,testdat)
+table(predict =ypred , truth=testdat$y ) 
+svmfit=svm(y~., data=dat , kernel ="linear", cost=.01, scale=FALSE)
+ypred=predict (svmfit ,testdat )
+table(predict =ypred , truth=testdat$y ) 
+x[y==1,]=x[y==1,]+0.5
+plot(x, col=(y+5)/2, pch =19)
+
+####
+dat=data.frame(x=x,y=as.factor(y))
+svmfit=svm(y~., data=dat , kernel ="linear", cost=1e5)
+summary (svmfit) 
+svmfit=svm(y~., data=dat , kernel ="linear", cost=1)
+summary (svmfit)
+plot(svmfit ,dat)
+
+```
+# Q.4
+```{r}
+
+
+```
+

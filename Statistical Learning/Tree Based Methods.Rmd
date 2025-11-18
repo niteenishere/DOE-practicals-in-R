@@ -1,0 +1,121 @@
+---
+title: "Tree_Based_Methods"
+author: "Mr.Pardeshi"
+date: "`r Sys.Date()`"
+output: html_document
+---
+
+```{r Classification Tree}
+library(ISLR2)
+data(package="ISLR2",Carseats)
+View(Carseats)
+
+Carseats$High = ifelse(Carseats$Sales > 8,'Yes','No')
+Carseats$High = as.factor(Carseats$High)
+
+set.seed(123)
+train_idx=sample(1:nrow(Carseats),0.7*nrow(Carseats))
+train=Carseats[train_idx,]
+test=Carseats[-train_idx,]
+
+# b) Building Classification tree's 
+
+library('tree')
+
+tree_model=tree(High~. - Sales,train) # exclude sales
+summary(tree_model)
+plot(tree_model)
+text(tree_model, pretty=10,digits = 5)
+
+# c) prune tree with 9 terminal nodes
+
+cv_tree=cv.tree(tree_model)
+optimal_size=cv_tree$size[which.max(cv_tree$dev)]
+plot(cv_tree$size,cv_tree$k,type="b")
+abline(v=optimal_size,h=min(cv_tree$dev),col='red')
+
+# pruning with 9 terminal nodes
+pruned_tree9=prune.tree(tree_model,best=9)
+plot(pruned_tree9, main='9_nodes')
+text(pruned_tree9,pretty=0)
+
+# pruning tree with 14 nodes
+pruned_tree14=prune.tree(tree_model,best=14)
+plot(pruned_tree14,main='14_nodes')
+text(pruned_tree14,pretty=0)
+
+# d) Test MSE for whole tree
+pred = predict(tree_model,test,type = 'class')
+(misclass=mean(pred!=test$High))
+cat("Misclassification error rate is:",misclass,'\n')
+
+# test mse for 9_node
+predict9=predict(pruned_tree9,test,type='class')
+(misclass9=mean((predict9)!=test$High))
+cat("Misclassification error rate for 9 nodes is:",misclass9,'\n')
+
+# test mse for 14 nodes
+predict14=predict(pruned_tree14,test,type='class')
+(misclass14=mean(predict14!=test$High))
+cat("Misclassification error rate for 14 nodes is:",misclass14,'\n')
+
+```
+
+
+
+```{r Regression tree}
+library('mlbench')
+library(MASS)
+data("Boston")
+#View(Boston)
+data(package='MASS')
+
+set.seed(123)
+
+train_idx=sample(1:nrow(Boston ),0.7*nrow(Boston ))
+train_Boston =Boston [train_idx,]
+test_Boston =Boston [-train_idx,]
+
+tree=tree(medv~.,data=train_Boston )
+summary(tree)
+plot(tree,main='Unpruned_tree')
+text(tree,pretty=0)
+
+# b) pruned tree 5 nodes 
+
+cv_tree1=cv.tree(tree)
+plot(cv_tree1$size,cv_tree1$dev,type='b')
+abline(v=cv_tree1$size[which.min(cv_tree1$dev)],col='red')
+
+tree_5=prune.tree(tree,best=5)
+plot(tree_5)
+text(tree_5,pretty=0)
+
+# C) predict
+
+pred=predict(tree_5,test_Boston )
+test_mse=mean((test_Boston $medv - pred)^2)
+train_mes=mean((train_Boston $medv - predict(tree_5,train_Boston ))^2)
+cat("Train MSE is:",train_mes,'\n',"Test MSE is:",test_mse,'\n')
+
+# Variance analysis: R_squared
+(R_sq= 1- (test_mse/var(test_Boston $medv)))
+
+
+# E) boosted model
+library('gbm')
+
+boost_model = gbm(medv~., data=train_Boston ,distribution = "gaussian",n.trees=500,interaction.depth=4,shrinkage=0.02,cv.folds=5)
+summary(boost_model)
+
+
+# optimal trees via CV
+
+best_trees = gbm.perf(boost_model,method='cv')
+cat("optimal trees:",best_trees)
+
+boost_pred=predict(boost_model,data=test_Boston , n.trees=best_trees)
+
+cat("test mse for boosted model is:",mean((test_Boston $medv- boost_pred)^2),'\n')
+```
+
